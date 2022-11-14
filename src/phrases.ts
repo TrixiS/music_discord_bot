@@ -32,5 +32,8 @@ export default {
     couldNotConnectToVoiceChannel: "Не удалось подключиться к голосому каналу",
     tracksNotFound: "Не удалось найти треки по вашему запросу",
     requestedByFmt: (user: User) => `От ${user.tag}`,
+    pauseFieldName: "Пауза",
+    pauseEnabled: "Включена",
+    pauseDisabled: "Выключена",
   },
 } as const;

@@ -93,6 +93,10 @@ export default class MusicExtension extends BaseExtension {
       }
     }
 
+    if (queue.playing) {
+      //
+    }
+
     const trackQuery = interaction.fields.getTextInputValue(
       trackInputCustomId.prefix
     );
@@ -140,6 +144,9 @@ export default class MusicExtension extends BaseExtension {
       components: this.createPlayerComponents(queue),
     });
   }
+
+  // @eventHandler({event: "interactionCreate"})
+  // async
 
   extractTracksFromSearchResult(searchResult: PlayerSearchResult) {
     if (searchResult.playlist?.tracks.length) {
@@ -198,6 +205,13 @@ export default class MusicExtension extends BaseExtension {
         {
           name: phrases.music.loopFieldName,
           value: phrases.music.loopTypes[queue.repeatMode],
+          inline: true,
+        },
+        {
+          name: phrases.music.pauseFieldName,
+          value: queue.connection?.paused
+            ? phrases.music.pauseEnabled
+            : phrases.music.pauseDisabled,
           inline: true,
         }
       )
