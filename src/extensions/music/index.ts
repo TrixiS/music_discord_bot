@@ -3,8 +3,10 @@ import {
   BotClient,
   buttonInteractionHandler,
   checkCustomId,
+  DefaultMap,
   eventHandler,
   modalSubmitInteractionHandler,
+  selectMenuInteractionHandler,
 } from "@trixis/lib-ts-bot";
 import {
   Player,
@@ -18,13 +20,16 @@ import {
   ButtonBuilder,
   ButtonInteraction,
   ButtonStyle,
+  CommandInteraction,
   EmbedBuilder,
   GuildMember,
   GuildResolvable,
+  MessageComponentInteraction,
   ModalActionRowComponentBuilder,
   ModalBuilder,
   ModalSubmitInteraction,
   SelectMenuBuilder,
+  SelectMenuInteraction,
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
@@ -32,6 +37,7 @@ import {
   addTrackButtonCustomId,
   addTrackModalCustomId,
   loopButtonCustomId,
+  loopSelectMenuCustomId,
   playButtonCustomId,
   removeTrackButtonCustomId,
   shuffleButtonCustomId,
@@ -52,6 +58,11 @@ export enum LoopType {
   Track = QueueRepeatMode.TRACK,
 }
 
+type PlayerInteraction =
+  | MessageComponentInteraction
+  | CommandInteraction
+  | ModalSubmitInteraction;
+
 export default class MusicExtension extends BaseExtension {
   readonly player = new Player(this.client, {
     ytdlOptions: {
@@ -60,6 +71,10 @@ export default class MusicExtension extends BaseExtension {
       dlChunkSize: 0,
     },
   });
+
+  playerInteractions: DefaultMap<string, PlayerInteraction[]> = new DefaultMap(
+    () => []
+  );
 
   @checkCustomId(playButtonCustomId)
   @buttonInteractionHandler()
@@ -87,22 +102,6 @@ export default class MusicExtension extends BaseExtension {
     const queue = this.getQueue(interaction.guild!);
     const member = interaction.member as GuildMember;
 
-    if (!queue.playing && !queue.connection?.channel) {
-      if (!member.voice.channel) {
-        return await interaction.editReply({
-          content: phrases.music.shouldBeInVoiceChannel,
-        });
-      }
-
-      try {
-        await queue.connect(member.voice.channel);
-      } catch {
-        return await interaction.editReply({
-          content: phrases.music.couldNotConnectToVoiceChannel,
-        });
-      }
-    }
-
     const trackQuery = interaction.fields.getTextInputValue(
       trackInputCustomId.prefix
     );
@@ -119,6 +118,23 @@ export default class MusicExtension extends BaseExtension {
       });
     }
 
+    if (!queue.playing && !queue.connection?.channel) {
+      if (!member.voice.channel) {
+        return await interaction.editReply({
+          content: phrases.music.shouldBeInVoiceChannel,
+        });
+      }
+
+      try {
+        await queue.connect(member.voice.channel);
+      } catch {
+        return await interaction.editReply({
+          content: phrases.music.couldNotConnectToVoiceChannel,
+        });
+      }
+    }
+
+    this.playerInteractions.get(queue.guild.id).push(interaction);
     queue.addTracks(tracks);
 
     if (!queue.playing) {
@@ -156,6 +172,67 @@ export default class MusicExtension extends BaseExtension {
   @eventHandler({ event: "interactionCreate" })
   async addTrackHandler(interaction: ButtonInteraction) {
     await interaction.showModal(this.createAddTrackModal());
+  }
+
+  @checkCustomId(loopButtonCustomId)
+  @buttonInteractionHandler()
+  @eventHandler({ event: "interactionCreate" })
+  async loopHandler(interaction: ButtonInteraction) {
+    await interaction.reply({
+      components: this.createLoopSelectComponents(),
+      ephemeral: true,
+    });
+  }
+
+  @checkCustomId(loopSelectMenuCustomId)
+  @selectMenuInteractionHandler()
+  @eventHandler({ event: "interactionCreate" })
+  async loopSelectHandler(interaction: SelectMenuInteraction) {
+    const loopType = parseInt(interaction.values[0]);
+    const loopTypeName = phrases.music.loopTypes[interaction.values[0]];
+    const queue = this.getQueue(interaction.guild!);
+
+    queue.setRepeatMode(loopType);
+
+    await interaction.update({
+      content: phrases.music.loopTypeSetFmt(loopTypeName),
+    });
+
+    await this.updateQueuePlayerInteractions(queue);
+  }
+
+  async updateQueuePlayerInteractions(queue: Queue) {
+    const interactions = this.playerInteractions.get(queue.guild.id);
+
+    if (interactions.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      interactions.map((interaction) =>
+        interaction.editReply({
+          embeds: this.createPlayerEmbeds(queue),
+          components: this.createPlayerComponents(queue),
+        })
+      )
+    );
+  }
+
+  createLoopSelectComponents() {
+    const row = new ActionRowBuilder<SelectMenuBuilder>().addComponents(
+      new SelectMenuBuilder()
+        .setCustomId(loopSelectMenuCustomId.prefix)
+        .setMinValues(1)
+        .setMaxValues(1)
+        .addOptions(
+          Object.entries(phrases.music.loopTypes).map((entry) => ({
+            label: entry[1],
+            value: entry[0],
+          }))
+        )
+    );
+
+    return [row];
   }
 
   extractTracksFromSearchResult(searchResult: PlayerSearchResult) {
@@ -286,6 +363,8 @@ export default class MusicExtension extends BaseExtension {
       const thirdRow = new ActionRowBuilder<SelectMenuBuilder>().addComponents(
         new SelectMenuBuilder()
           .setCustomId(trackSelectMenuCustomId.prefix)
+          .setMinValues(1)
+          .setMaxValues(1)
           .addOptions(
             queue.tracks
               .slice(0, constants.discord.selectMenuMaxOptionsAmount)

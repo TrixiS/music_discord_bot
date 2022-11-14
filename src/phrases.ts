@@ -35,5 +35,7 @@ export default {
     pauseFieldName: "Пауза",
     pauseEnabled: "Включена",
     pauseDisabled: "Выключена",
+    loopTypeSetFmt: (loopTypeName: string) =>
+      `Повтор установлен на ${loopTypeName}`,
   },
 } as const;
