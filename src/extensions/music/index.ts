@@ -84,7 +84,7 @@ export default class MusicExtension extends BaseExtension {
   async register() {
     await super.register();
     this.player.on("trackStart", (queue, track) =>
-      this.updateQueuePlayerInteractions(queue)
+      this.updateQueuePlayerInteractions(undefined, queue)
     );
   }
 
@@ -102,7 +102,7 @@ export default class MusicExtension extends BaseExtension {
         embeds: this.createPlayerEmbeds(queue),
       });
 
-      return await this.updateQueuePlayerInteractions(queue);
+      return await this.updateQueuePlayerInteractions(interaction, queue);
     }
 
     await interaction.showModal(this.createAddTrackModal());
@@ -157,7 +157,7 @@ export default class MusicExtension extends BaseExtension {
       queue.playing = true;
     }
 
-    await this.updateQueuePlayerInteractions(queue);
+    await this.updateQueuePlayerInteractions(interaction, queue);
   }
 
   @checkCustomId(stopButtonCustomId)
@@ -178,7 +178,7 @@ export default class MusicExtension extends BaseExtension {
       components: this.createPlayerComponents(queue),
     });
 
-    await this.updateQueuePlayerInteractions(queue);
+    await this.updateQueuePlayerInteractions(interaction, queue);
   }
 
   @checkCustomId(addTrackButtonCustomId)
@@ -212,7 +212,7 @@ export default class MusicExtension extends BaseExtension {
       content: phrases.music.loopTypeSetFmt(loopTypeName),
     });
 
-    await this.updateQueuePlayerInteractions(queue);
+    await this.updateQueuePlayerInteractions(interaction, queue);
   }
 
   @checkCustomId(shuffleButtonCustomId)
@@ -226,11 +226,18 @@ export default class MusicExtension extends BaseExtension {
       components: this.createPlayerComponents(queue),
     });
 
-    await this.updateQueuePlayerInteractions(queue);
+    await this.updateQueuePlayerInteractions(interaction, queue);
   }
 
-  async updateQueuePlayerInteractions(queue: Queue) {
+  async updateQueuePlayerInteractions(
+    currentInteraction: PlayerInteraction | undefined,
+    queue: Queue
+  ) {
     const interactions = this.playerInteractions.get(queue.guild.id);
+
+    if (currentInteraction && !interactions.has(currentInteraction.id)) {
+      interactions.set(currentInteraction.id, currentInteraction);
+    }
 
     if (interactions.size === 0) {
       return;
@@ -286,7 +293,7 @@ export default class MusicExtension extends BaseExtension {
       content: phrases.music.trackRemovedFmt(removedTrack),
       components: [],
     });
-    await this.updateQueuePlayerInteractions(queue);
+    await this.updateQueuePlayerInteractions(interaction, queue);
   }
 
   @checkCustomId(trackSelectMenuCustomId)
