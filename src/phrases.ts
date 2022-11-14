@@ -1,5 +1,5 @@
 import { BotClient } from "@trixis/lib-ts-bot";
-import { QueueRepeatMode } from "discord-player";
+import { QueueRepeatMode, Track } from "discord-player";
 import { User } from "discord.js";
 
 export default {
@@ -37,5 +37,9 @@ export default {
     pauseDisabled: "Выключена",
     loopTypeSetFmt: (loopTypeName: string) =>
       `Повтор установлен на ${loopTypeName}`,
+    selectTrackToRemove: "Выберите трек, чтобы удалить",
+    trackRemovedFmt: (track: Track) =>
+      `Трек ${track.title} удален из плейлиста`,
+    noTracks: "В плейлисте нет треков",
   },
 } as const;

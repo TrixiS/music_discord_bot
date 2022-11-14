@@ -10,3 +10,6 @@ export const trackSelectMenuCustomId = new CustomId("trackSelectMenu");
 export const trackInputCustomId = new CustomId("trackInput");
 export const addTrackModalCustomId = new CustomId("addTrackModal");
 export const loopSelectMenuCustomId = new CustomId("loopSelectMenu");
+export const removeTrackSelectMenuCustomId = new CustomId(
+  "removeTrackSelectMenu"
+);

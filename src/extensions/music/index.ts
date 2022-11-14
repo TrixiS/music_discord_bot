@@ -3,6 +3,7 @@ import {
   BotClient,
   buttonInteractionHandler,
   checkCustomId,
+  CustomId,
   DefaultMap,
   eventHandler,
   modalSubmitInteractionHandler,
@@ -40,6 +41,7 @@ import {
   loopSelectMenuCustomId,
   playButtonCustomId,
   removeTrackButtonCustomId,
+  removeTrackSelectMenuCustomId,
   shuffleButtonCustomId,
   stopButtonCustomId,
   trackInputCustomId,
@@ -226,6 +228,41 @@ export default class MusicExtension extends BaseExtension {
     );
   }
 
+  @checkCustomId(removeTrackButtonCustomId)
+  @buttonInteractionHandler()
+  @eventHandler({ event: "interactionCreate" })
+  async removeTrackHandler(interaction: ButtonInteraction) {
+    const queue = this.getQueue(interaction.guild!);
+
+    if (queue.tracks.length === 0) {
+      return await interaction.reply({
+        content: phrases.music.noTracks,
+        ephemeral: true,
+      });
+    }
+
+    await interaction.reply({
+      content: phrases.music.selectTrackToRemove,
+      components: [
+        this.createTrackSelectMenu(removeTrackSelectMenuCustomId, queue.tracks),
+      ],
+      ephemeral: true,
+    });
+  }
+
+  @checkCustomId(removeTrackSelectMenuCustomId)
+  @selectMenuInteractionHandler()
+  @eventHandler({ event: "interactionCreate" })
+  async removeTrackSelectHandler(interaction: SelectMenuInteraction) {
+    const queue = this.getQueue(interaction.guild!);
+    const removedTrack = queue.remove(interaction.values[0]);
+    await interaction.update({
+      content: phrases.music.trackRemovedFmt(removedTrack),
+      components: [],
+    });
+    await this.updateQueuePlayerInteractions(queue);
+  }
+
   createLoopSelectComponents() {
     const row = new ActionRowBuilder<SelectMenuBuilder>().addComponents(
       new SelectMenuBuilder()
@@ -368,25 +405,29 @@ export default class MusicExtension extends BaseExtension {
     ];
 
     if (queue.tracks.length > 0) {
-      const thirdRow = new ActionRowBuilder<SelectMenuBuilder>().addComponents(
-        new SelectMenuBuilder()
-          .setCustomId(trackSelectMenuCustomId.prefix)
-          .setMinValues(1)
-          .setMaxValues(1)
-          .addOptions(
-            queue.tracks
-              .slice(0, constants.discord.selectMenuMaxOptionsAmount)
-              .map((track) => ({
-                label: track.title,
-                value: track.id,
-                description: phrases.music.requestedByFmt(track.requestedBy),
-              }))
-          )
+      rows.push(
+        this.createTrackSelectMenu(trackSelectMenuCustomId, queue.tracks)
       );
-
-      rows.push(thirdRow);
     }
 
     return rows;
+  }
+
+  createTrackSelectMenu(customId: CustomId, tracks: Track[]) {
+    return new ActionRowBuilder<SelectMenuBuilder>().addComponents(
+      new SelectMenuBuilder()
+        .setCustomId(customId.prefix)
+        .setMinValues(1)
+        .setMaxValues(1)
+        .addOptions(
+          tracks
+            .slice(0, constants.discord.selectMenuMaxOptionsAmount)
+            .map((track) => ({
+              label: track.title,
+              value: track.id,
+              description: phrases.music.requestedByFmt(track.requestedBy),
+            }))
+        )
+    );
   }
 }
