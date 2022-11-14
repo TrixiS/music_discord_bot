@@ -58,10 +58,7 @@ export enum LoopType {
   Track = QueueRepeatMode.TRACK,
 }
 
-type PlayerInteraction =
-  | MessageComponentInteraction
-  | CommandInteraction
-  | ModalSubmitInteraction;
+type PlayerInteraction = MessageComponentInteraction | ModalSubmitInteraction;
 
 export default class MusicExtension extends BaseExtension {
   readonly player = new Player(this.client, {
@@ -199,6 +196,17 @@ export default class MusicExtension extends BaseExtension {
     });
 
     await this.updateQueuePlayerInteractions(queue);
+  }
+
+  @checkCustomId(shuffleButtonCustomId)
+  @buttonInteractionHandler()
+  @eventHandler({ event: "interactionCreate" })
+  async shuffleHandler(interaction: ButtonInteraction) {
+    const queue = this.getQueue(interaction.guild!);
+    queue.shuffle();
+    await interaction.update({
+      components: this.createPlayerComponents(queue),
+    });
   }
 
   async updateQueuePlayerInteractions(queue: Queue) {
