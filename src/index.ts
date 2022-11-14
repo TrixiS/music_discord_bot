@@ -9,7 +9,11 @@ import { importAllExtensions } from "./utils/loader";
 // TODO: converters for commandHandler (they could be also transformers)
 
 const client = new BotClient({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates,
+  ],
 });
 
 client.once("ready", async () => {

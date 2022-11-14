@@ -16,12 +16,19 @@
     "cli": "npx ts-node cli.ts"
   },
   "dependencies": {
+    "@discordjs/opus": "^0.8.0",
     "@prisma/client": "^4.6.0",
     "@trixis/lib-ts-bot": "^0.2.23",
+    "dayjs": "^1.11.6",
+    "discord-player": "^5.3.2",
     "discord.js": "^14.6.0",
     "prisma": "^4.6.0",
     "reflect-metadata": "^0.1.13",
+    "soundcloud-scraper": "^5.0.3",
+    "spotify-url-info": "^3.1.9",
     "typescript": "^4.8.4",
+    "youtube-sr": "^4.3.4",
+    "ytdl-core": "^4.11.2",
     "zod": "^3.19.1",
     "zod-model": "^0.0.4"
   },
