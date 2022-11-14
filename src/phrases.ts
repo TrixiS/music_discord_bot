@@ -25,5 +25,10 @@ export default {
       [QueueRepeatMode.TRACK.toString()]: "Трек",
     },
     trackDurationFormat: "HHч mmм ssс",
+    trackInputLabel: "Трек",
+    addTrackModalTitle: "Добавить трек",
+    shouldBeInVoiceChannel: "Вы должны находиться в голосовом канале",
+    couldNotConnectToVoiceChannel: "Не удалось подключиться к голосому каналу",
+    tracksNotFound: "Не удалось найти треки по вашему запросу",
   },
 } as const;

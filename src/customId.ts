@@ -7,3 +7,5 @@ export const removeTrackButtonCustomId = new CustomId("removeTrackButton");
 export const shuffleButtonCustomId = new CustomId("shuffleButton");
 export const loopButtonCustomId = new CustomId("loopButton");
 export const trackSelectMenuCustomId = new CustomId("trackSelectMenu");
+export const trackInputCustomId = new CustomId("trackInput");
+export const addTrackModalCustomId = new CustomId("addTrackModal");
