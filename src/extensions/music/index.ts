@@ -65,6 +65,16 @@ export default class MusicExtension extends BaseExtension {
   @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async playButtonHandler(interaction: ButtonInteraction) {
+    const queue = this.getQueue(interaction.guild!);
+
+    if (queue.playing && queue.connection) {
+      const paused = !queue.connection.paused;
+      queue.setPaused(paused);
+      return await interaction.update({
+        embeds: this.createPlayerEmbeds(queue),
+      });
+    }
+
     await interaction.showModal(this.createAddTrackModal());
   }
 
@@ -91,10 +101,6 @@ export default class MusicExtension extends BaseExtension {
           content: phrases.music.couldNotConnectToVoiceChannel,
         });
       }
-    }
-
-    if (queue.playing) {
-      //
     }
 
     const trackQuery = interaction.fields.getTextInputValue(
