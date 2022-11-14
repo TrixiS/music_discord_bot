@@ -1,6 +1,5 @@
 import {
   BaseExtension,
-  BotClient,
   buttonInteractionHandler,
   checkCustomId,
   CustomId,
@@ -12,6 +11,7 @@ import {
 import {
   Player,
   PlayerSearchResult,
+  QueryType,
   Queue,
   QueueRepeatMode,
   Track,
@@ -21,6 +21,7 @@ import {
   ButtonBuilder,
   ButtonInteraction,
   ButtonStyle,
+  Collection,
   CommandInteraction,
   EmbedBuilder,
   GuildMember,
@@ -75,9 +76,10 @@ export default class MusicExtension extends BaseExtension {
     },
   });
 
-  playerInteractions: DefaultMap<string, PlayerInteraction[]> = new DefaultMap(
-    () => []
-  );
+  playerInteractions: DefaultMap<
+    string,
+    Collection<string, PlayerInteraction>
+  > = new DefaultMap(() => new Collection());
 
   async register() {
     await super.register();
@@ -121,6 +123,7 @@ export default class MusicExtension extends BaseExtension {
 
     const searchResult = await this.player.search(trackQuery, {
       requestedBy: interaction.user,
+      searchEngine: QueryType.AUTO,
     });
 
     const tracks = this.extractTracksFromSearchResult(searchResult);
@@ -218,16 +221,18 @@ export default class MusicExtension extends BaseExtension {
   async shuffleHandler(interaction: ButtonInteraction) {
     const queue = this.getQueue(interaction.guild!);
     queue.shuffle();
+
     await interaction.update({
       components: this.createPlayerComponents(queue),
     });
+
     await this.updateQueuePlayerInteractions(queue);
   }
 
   async updateQueuePlayerInteractions(queue: Queue) {
     const interactions = this.playerInteractions.get(queue.guild.id);
 
-    if (interactions.length === 0) {
+    if (interactions.size === 0) {
       return;
     }
 
@@ -240,8 +245,7 @@ export default class MusicExtension extends BaseExtension {
       try {
         await interaction.editReply(options);
       } catch {
-        const interactionIndex = interactions.indexOf(interaction);
-        interactions.splice(interactionIndex, 1);
+        interactions.delete(interaction.id);
       }
     };
 
