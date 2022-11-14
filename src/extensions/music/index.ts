@@ -83,9 +83,14 @@ export default class MusicExtension extends BaseExtension {
 
   async register() {
     await super.register();
-    this.player.on("trackStart", (queue, track) =>
+
+    this.player.on("trackStart", (queue) =>
       this.updateQueuePlayerInteractions(undefined, queue)
     );
+
+    this.player.on("queueEnd", (queue) => {
+      this.updateQueuePlayerInteractions(undefined, queue);
+    });
   }
 
   @checkCustomId(playButtonCustomId)
