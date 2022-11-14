@@ -460,12 +460,30 @@ export default class MusicExtension extends BaseExtension {
     return rows;
   }
 
+  sumTrackDurations(tracks: Track[]) {
+    let durationMs = 0;
+
+    for (const track of tracks) {
+      durationMs += track.durationMS;
+    }
+
+    return durationMs;
+  }
+
   createTrackSelectMenu(customId: CustomId, tracks: Track[]) {
+    const sumTrackDuration = this.sumTrackDurations(tracks);
+
     return new ActionRowBuilder<SelectMenuBuilder>().addComponents(
       new SelectMenuBuilder()
         .setCustomId(customId.prefix)
         .setMinValues(1)
         .setMaxValues(1)
+        .setPlaceholder(
+          phrases.music.playlistStatsFmt(
+            tracks.length,
+            this.formatTrackDuration(sumTrackDuration)
+          )
+        )
         .addOptions(
           tracks
             .slice(0, constants.discord.selectMenuMaxOptionsAmount)

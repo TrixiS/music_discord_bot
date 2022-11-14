@@ -41,5 +41,7 @@ export default {
     trackRemovedFmt: (track: Track) =>
       `Трек ${track.title} удален из плейлиста`,
     noTracks: "В плейлисте нет треков",
+    playlistStatsFmt: (tracksCount: number, duration: string) =>
+      `Всего ${tracksCount} треков на ${duration}`,
   },
 } as const;
