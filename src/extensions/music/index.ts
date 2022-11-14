@@ -156,7 +156,7 @@ export default class MusicExtension extends BaseExtension {
   }
 
   createPlayerEmbeds(queue: Queue) {
-    if (!queue.playing) {
+    if (!queue.connection?.audioResource) {
       const embed = new EmbedBuilder().setTitle(
         phrases.music.nothingPlayingEmbedTitle
       );
@@ -165,6 +165,7 @@ export default class MusicExtension extends BaseExtension {
     }
 
     const currentTrack = queue.nowPlaying();
+
     const embed = new EmbedBuilder()
       .setTitle(currentTrack.title)
       .setURL(currentTrack.url)
