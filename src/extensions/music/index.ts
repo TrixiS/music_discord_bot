@@ -169,6 +169,7 @@ export default class MusicExtension extends BaseExtension {
     queue.clear();
 
     if (queue.playing) {
+      queue.connection.disconnect();
       queue.skip();
       queue.playing = false;
     }
@@ -212,7 +213,7 @@ export default class MusicExtension extends BaseExtension {
       content: phrases.music.loopTypeSetFmt(loopTypeName),
     });
 
-    await this.updateQueuePlayerInteractions(interaction, queue);
+    await this.updateQueuePlayerInteractions(undefined, queue);
   }
 
   @checkCustomId(shuffleButtonCustomId)
