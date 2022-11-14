@@ -218,6 +218,9 @@ export default class MusicExtension extends BaseExtension {
   async shuffleHandler(interaction: ButtonInteraction) {
     const queue = this.getQueue(interaction.guild!);
     queue.shuffle();
+    await interaction.update({
+      components: this.createPlayerComponents(queue),
+    });
     await this.updateQueuePlayerInteractions(queue);
   }
 
