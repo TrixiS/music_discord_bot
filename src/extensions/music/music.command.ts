@@ -22,6 +22,8 @@ export default class MusicCommand extends BaseSlashCommand<MusicExtension> {
   async run({ interaction, guild }: CommandContext) {
     const queue = this.extension.getQueue(guild!);
 
+    this.extension.playerInteractions.get(guild!.id).push(interaction);
+
     await interaction.reply({
       embeds: this.extension.createPlayerEmbeds(queue),
       components: this.extension.createPlayerComponents(queue),

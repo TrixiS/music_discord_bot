@@ -33,6 +33,7 @@ import {
   SelectMenuInteraction,
   TextInputBuilder,
   TextInputStyle,
+  WebhookEditMessageOptions,
 } from "discord.js";
 import {
   addTrackButtonCustomId,
@@ -60,7 +61,10 @@ export enum LoopType {
   Track = QueueRepeatMode.TRACK,
 }
 
-type PlayerInteraction = MessageComponentInteraction | ModalSubmitInteraction;
+type PlayerInteraction =
+  | MessageComponentInteraction
+  | ModalSubmitInteraction
+  | CommandInteraction;
 
 export default class MusicExtension extends BaseExtension {
   readonly player = new Player(this.client, {
@@ -75,6 +79,13 @@ export default class MusicExtension extends BaseExtension {
     () => []
   );
 
+  async register() {
+    await super.register();
+    this.player.on("trackStart", (queue, track) =>
+      this.updateQueuePlayerInteractions(queue)
+    );
+  }
+
   @checkCustomId(playButtonCustomId)
   @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
@@ -84,9 +95,12 @@ export default class MusicExtension extends BaseExtension {
     if (queue.playing && queue.connection) {
       const paused = !queue.connection.paused;
       queue.setPaused(paused);
-      return await interaction.update({
+
+      await interaction.update({
         embeds: this.createPlayerEmbeds(queue),
       });
+
+      return await this.updateQueuePlayerInteractions(queue);
     }
 
     await interaction.showModal(this.createAddTrackModal());
@@ -133,7 +147,6 @@ export default class MusicExtension extends BaseExtension {
       }
     }
 
-    this.playerInteractions.get(queue.guild.id).push(interaction);
     queue.addTracks(tracks);
 
     if (!queue.playing) {
@@ -141,10 +154,7 @@ export default class MusicExtension extends BaseExtension {
       queue.playing = true;
     }
 
-    await interaction.editReply({
-      embeds: this.createPlayerEmbeds(queue),
-      components: this.createPlayerComponents(queue),
-    });
+    await this.updateQueuePlayerInteractions(queue);
   }
 
   @checkCustomId(stopButtonCustomId)
@@ -164,6 +174,8 @@ export default class MusicExtension extends BaseExtension {
       embeds: this.createPlayerEmbeds(queue),
       components: this.createPlayerComponents(queue),
     });
+
+    await this.updateQueuePlayerInteractions(queue);
   }
 
   @checkCustomId(addTrackButtonCustomId)
@@ -206,9 +218,7 @@ export default class MusicExtension extends BaseExtension {
   async shuffleHandler(interaction: ButtonInteraction) {
     const queue = this.getQueue(interaction.guild!);
     queue.shuffle();
-    await interaction.update({
-      components: this.createPlayerComponents(queue),
-    });
+    await this.updateQueuePlayerInteractions(queue);
   }
 
   async updateQueuePlayerInteractions(queue: Queue) {
@@ -218,13 +228,22 @@ export default class MusicExtension extends BaseExtension {
       return;
     }
 
+    const options: WebhookEditMessageOptions = {
+      embeds: this.createPlayerEmbeds(queue),
+      components: this.createPlayerComponents(queue),
+    };
+
+    const updatePlayerInteraction = async (interaction: PlayerInteraction) => {
+      try {
+        await interaction.editReply(options);
+      } catch {
+        const interactionIndex = interactions.indexOf(interaction);
+        interactions.splice(interactionIndex, 1);
+      }
+    };
+
     await Promise.all(
-      interactions.map((interaction) =>
-        interaction.editReply({
-          embeds: this.createPlayerEmbeds(queue),
-          components: this.createPlayerComponents(queue),
-        })
-      )
+      interactions.map((interaction) => updatePlayerInteraction(interaction))
     );
   }
 
@@ -261,6 +280,27 @@ export default class MusicExtension extends BaseExtension {
       components: [],
     });
     await this.updateQueuePlayerInteractions(queue);
+  }
+
+  @checkCustomId(trackSelectMenuCustomId)
+  @selectMenuInteractionHandler()
+  @eventHandler({ event: "interactionCreate" })
+  async strackSelectHandler(interaction: SelectMenuInteraction) {
+    const queue = this.getQueue(interaction.guild!);
+    const track = queue.tracks.find(
+      (track) => track.id === interaction.values[0]
+    );
+
+    if (!track) {
+      return;
+    }
+
+    queue.skipTo(track);
+
+    await interaction.update({
+      embeds: this.createPlayerEmbeds(queue),
+      components: this.createPlayerComponents(queue),
+    });
   }
 
   createLoopSelectComponents() {
