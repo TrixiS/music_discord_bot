@@ -113,9 +113,29 @@ export default class MusicExtension extends BaseExtension {
 
     if (!queue.playing) {
       await queue.play();
+      queue.playing = true;
     }
 
     await interaction.editReply({
+      embeds: this.createPlayerEmbeds(queue),
+      components: this.createPlayerComponents(queue),
+    });
+  }
+
+  @checkCustomId(stopButtonCustomId)
+  @buttonInteractionHandler()
+  @eventHandler({ event: "interactionCreate" })
+  async stopButtonHandler(interaction: ButtonInteraction) {
+    const queue = this.getQueue(interaction.guild!);
+
+    queue.clear();
+
+    if (queue.playing) {
+      queue.skip();
+      queue.playing = false;
+    }
+
+    await interaction.update({
       embeds: this.createPlayerEmbeds(queue),
       components: this.createPlayerComponents(queue),
     });
@@ -156,7 +176,7 @@ export default class MusicExtension extends BaseExtension {
   }
 
   createPlayerEmbeds(queue: Queue) {
-    if (!queue.connection?.audioResource) {
+    if (!queue.playing) {
       const embed = new EmbedBuilder().setTitle(
         phrases.music.nothingPlayingEmbedTitle
       );
@@ -196,7 +216,7 @@ export default class MusicExtension extends BaseExtension {
   }
 
   createPlayerComponents(queue: Queue) {
-    const disabled = !queue.connection?.audioResource;
+    const disabled = !queue.playing;
 
     const firstRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
