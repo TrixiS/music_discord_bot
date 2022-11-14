@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug lib",
+      "program": "${workspaceFolder}/bin/index.js",
+      "request": "launch",
+      "skipFiles": ["<node_internals>/**"],
+      // "runtimeArgs": ["--preserve-symlinks"],
+      "type": "node"
+    },
+    {
+      "name": "Debug",
+      "type": "node",
+      "request": "launch",
+      "runtimeArgs": ["-r", "ts-node/register"],
+      "args": ["${workspaceFolder}/src/index.ts"],
+      "skipFiles": [
+        "${workspaceFolder}/node_modules/**/*.js",
+        "${workspaceFolder}/lib/**/*.js"
+      ]
+    }
+  ]
+}
