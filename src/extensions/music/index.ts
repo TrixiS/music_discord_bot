@@ -248,6 +248,7 @@ export default class MusicExtension extends BaseExtension {
               .map((track) => ({
                 label: track.title,
                 value: track.id,
+                description: phrases.music.requestedByFmt(track.requestedBy),
               }))
           )
       );

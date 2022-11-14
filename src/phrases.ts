@@ -1,5 +1,6 @@
 import { BotClient } from "@trixis/lib-ts-bot";
 import { QueueRepeatMode } from "discord-player";
+import { User } from "discord.js";
 
 export default {
   default: {
@@ -30,5 +31,6 @@ export default {
     shouldBeInVoiceChannel: "Вы должны находиться в голосовом канале",
     couldNotConnectToVoiceChannel: "Не удалось подключиться к голосому каналу",
     tracksNotFound: "Не удалось найти треки по вашему запросу",
+    requestedByFmt: (user: User) => `От ${user.tag}`,
   },
 } as const;
