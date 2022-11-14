@@ -87,7 +87,7 @@ export default class MusicExtension extends BaseExtension {
     const queue = this.getQueue(interaction.guild!);
     const member = interaction.member as GuildMember;
 
-    if (!queue.connection?.channel) {
+    if (!queue.playing && !queue.connection?.channel) {
       if (!member.voice.channel) {
         return await interaction.editReply({
           content: phrases.music.shouldBeInVoiceChannel,
@@ -151,8 +151,12 @@ export default class MusicExtension extends BaseExtension {
     });
   }
 
-  // @eventHandler({event: "interactionCreate"})
-  // async
+  @checkCustomId(addTrackButtonCustomId)
+  @buttonInteractionHandler()
+  @eventHandler({ event: "interactionCreate" })
+  async addTrackHandler(interaction: ButtonInteraction) {
+    await interaction.showModal(this.createAddTrackModal());
+  }
 
   extractTracksFromSearchResult(searchResult: PlayerSearchResult) {
     if (searchResult.playlist?.tracks.length) {
