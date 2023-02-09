@@ -1,19 +1,18 @@
-import { SlashCommandBuilder } from "discord.js";
-import MusicExtension from ".";
 import {
   BaseSlashCommand,
-  commandHandler,
   CommandContext,
-  guildOnlyCommand,
+  commandHandler,
 } from "@trixis/lib-ts-bot";
+import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import MusicExtension from ".";
 import phrases from "../../phrases";
 
-@guildOnlyCommand()
 export default class MusicCommand extends BaseSlashCommand<MusicExtension> {
   constructor(extension: MusicExtension) {
     const builder = new SlashCommandBuilder()
       .setName(phrases.music.musicCommandName)
-      .setDescription(phrases.music.musicCommandDescription);
+      .setDescription(phrases.music.musicCommandDescription)
+      .setDefaultMemberPermissions(PermissionFlagsBits.SendMessages);
 
     super(extension, builder);
   }

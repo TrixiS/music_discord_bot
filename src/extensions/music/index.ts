@@ -8,6 +8,8 @@ import {
   modalSubmitInteractionHandler,
   selectMenuInteractionHandler,
 } from "@trixis/lib-ts-bot";
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
 import {
   Player,
   PlayerSearchResult,
@@ -50,8 +52,6 @@ import {
   trackSelectMenuCustomId,
 } from "../../customId";
 import phrases from "../../phrases";
-import dayjs from "dayjs";
-import duration from "dayjs/plugin/duration";
 import constants from "../../utils/constants";
 
 dayjs.extend(duration);
