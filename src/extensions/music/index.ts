@@ -11,12 +11,13 @@ import {
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import {
+  GuildQueue,
   Player,
-  PlayerSearchResult,
   QueryType,
-  Queue,
   QueueRepeatMode,
+  SearchResult,
   Track,
+  useQueue,
 } from "discord-player";
 import {
   ActionRowBuilder,
@@ -27,7 +28,6 @@ import {
   CommandInteraction,
   EmbedBuilder,
   GuildMember,
-  GuildResolvable,
   MessageComponentInteraction,
   ModalActionRowComponentBuilder,
   ModalBuilder,
@@ -84,11 +84,11 @@ export default class MusicExtension extends BaseExtension {
   async register() {
     await super.register();
 
-    this.player.on("trackStart", (queue) =>
+    this.player.events.on("playerStart", (queue) =>
       this.updateQueuePlayerInteractions(undefined, queue)
     );
 
-    this.player.on("queueEnd", (queue) => {
+    this.player.events.on("playerStart", (queue) => {
       this.updateQueuePlayerInteractions(undefined, queue);
     });
   }
@@ -97,11 +97,10 @@ export default class MusicExtension extends BaseExtension {
   @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async playButtonHandler(interaction: ButtonInteraction) {
-    const queue = this.getQueue(interaction.guild!);
+    const queue = useQueue(interaction.guild!)!;
 
-    if (queue.playing && queue.connection) {
-      const paused = !queue.connection.paused;
-      queue.setPaused(paused);
+    if (queue.node.isPlaying()) {
+      queue.node.setPaused(!queue.node.isPaused());
 
       await interaction.update({
         embeds: this.createPlayerEmbeds(queue),
@@ -119,7 +118,7 @@ export default class MusicExtension extends BaseExtension {
   async addTrackModalHandler(interaction: ModalSubmitInteraction) {
     await interaction.deferUpdate();
 
-    const queue = this.getQueue(interaction.guild!);
+    const queue = useQueue(interaction.guild!)!;
     const member = interaction.member as GuildMember;
 
     const trackQuery = interaction.fields.getTextInputValue(
@@ -139,7 +138,7 @@ export default class MusicExtension extends BaseExtension {
       });
     }
 
-    if (!queue.playing && !queue.connection?.channel) {
+    if (!queue.node.isPlaying() && !queue.channel) {
       if (!member.voice.channel) {
         return await interaction.editReply({
           content: phrases.music.shouldBeInVoiceChannel,
@@ -155,11 +154,10 @@ export default class MusicExtension extends BaseExtension {
       }
     }
 
-    queue.addTracks(tracks);
+    queue.addTrack(tracks);
 
-    if (!queue.playing) {
-      await queue.play();
-      queue.playing = true;
+    if (!queue.node.isPlaying()) {
+      await queue.node.play();
     }
 
     await this.updateQueuePlayerInteractions(interaction, queue);
@@ -169,15 +167,8 @@ export default class MusicExtension extends BaseExtension {
   @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async stopButtonHandler(interaction: ButtonInteraction) {
-    const queue = this.getQueue(interaction.guild!);
-
-    queue.clear();
-
-    if (queue.playing) {
-      queue.connection.disconnect();
-      queue.skip();
-      queue.playing = false;
-    }
+    const queue = useQueue(interaction.guild!)!;
+    queue.delete();
 
     await interaction.update({
       embeds: this.createPlayerEmbeds(queue),
@@ -210,7 +201,7 @@ export default class MusicExtension extends BaseExtension {
   async loopSelectHandler(interaction: SelectMenuInteraction) {
     const loopType = parseInt(interaction.values[0]);
     const loopTypeName = phrases.music.loopTypes[interaction.values[0]];
-    const queue = this.getQueue(interaction.guild!);
+    const queue = useQueue(interaction.guild!)!;
 
     queue.setRepeatMode(loopType);
 
@@ -225,8 +216,8 @@ export default class MusicExtension extends BaseExtension {
   @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async shuffleHandler(interaction: ButtonInteraction) {
-    const queue = this.getQueue(interaction.guild!);
-    queue.shuffle();
+    const queue = useQueue(interaction.guild!)!;
+    queue.tracks.shuffle();
 
     await interaction.update({
       components: this.createPlayerComponents(queue),
@@ -237,7 +228,7 @@ export default class MusicExtension extends BaseExtension {
 
   async updateQueuePlayerInteractions(
     currentInteraction: PlayerInteraction | undefined,
-    queue: Queue
+    queue: GuildQueue
   ) {
     const interactions = this.playerInteractions.get(queue.guild.id);
 
@@ -271,9 +262,9 @@ export default class MusicExtension extends BaseExtension {
   @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async removeTrackHandler(interaction: ButtonInteraction) {
-    const queue = this.getQueue(interaction.guild!);
+    const queue = useQueue(interaction.guild!)!;
 
-    if (queue.tracks.length === 0) {
+    if (queue.tracks.size === 0) {
       return await interaction.reply({
         content: phrases.music.noTracks,
         ephemeral: true,
@@ -283,7 +274,10 @@ export default class MusicExtension extends BaseExtension {
     await interaction.reply({
       content: phrases.music.selectTrackToRemove,
       components: [
-        this.createTrackSelectMenu(removeTrackSelectMenuCustomId, queue.tracks),
+        this.createTrackSelectMenu(
+          removeTrackSelectMenuCustomId,
+          queue.tracks.toArray()
+        ),
       ],
       ephemeral: true,
     });
@@ -293,20 +287,23 @@ export default class MusicExtension extends BaseExtension {
   @selectMenuInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async removeTrackSelectHandler(interaction: SelectMenuInteraction) {
-    const queue = this.getQueue(interaction.guild!);
-    const removedTrack = queue.remove(interaction.values[0]);
+    const queue = useQueue(interaction.guild!)!;
+    const removedTrack = queue.removeTrack(interaction.values[0])!;
+
     await interaction.update({
       content: phrases.music.trackRemovedFmt(removedTrack),
       components: [],
     });
+
     await this.updateQueuePlayerInteractions(interaction, queue);
   }
 
   @checkCustomId(trackSelectMenuCustomId)
   @selectMenuInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
-  async strackSelectHandler(interaction: SelectMenuInteraction) {
-    const queue = this.getQueue(interaction.guild!);
+  async trackSelectHandler(interaction: SelectMenuInteraction) {
+    const queue = useQueue(interaction.guild!)!;
+
     const track = queue.tracks.find(
       (track) => track.id === interaction.values[0]
     );
@@ -315,7 +312,7 @@ export default class MusicExtension extends BaseExtension {
       return;
     }
 
-    queue.skipTo(track);
+    queue.node.skipTo(track);
 
     await interaction.update({
       embeds: this.createPlayerEmbeds(queue),
@@ -340,7 +337,7 @@ export default class MusicExtension extends BaseExtension {
     return [row];
   }
 
-  extractTracksFromSearchResult(searchResult: PlayerSearchResult) {
+  extractTracksFromSearchResult(searchResult: SearchResult) {
     if (searchResult.playlist?.tracks.length) {
       return searchResult.playlist.tracks;
     }
@@ -370,12 +367,8 @@ export default class MusicExtension extends BaseExtension {
     return modal;
   }
 
-  getQueue(guild: GuildResolvable) {
-    return this.player.getQueue(guild) ?? this.player.createQueue(guild);
-  }
-
-  createPlayerEmbeds(queue: Queue) {
-    if (!queue.playing) {
+  createPlayerEmbeds(queue: GuildQueue) {
+    if (queue.deleted || !queue.currentTrack) {
       const embed = new EmbedBuilder().setTitle(
         phrases.music.nothingPlayingEmbedTitle
       );
@@ -383,15 +376,13 @@ export default class MusicExtension extends BaseExtension {
       return [embed];
     }
 
-    const currentTrack = queue.nowPlaying();
-
     const embed = new EmbedBuilder()
-      .setTitle(currentTrack.title)
-      .setURL(currentTrack.url)
+      .setTitle(queue.currentTrack.title)
+      .setURL(queue.currentTrack.url)
       .addFields(
         {
           name: phrases.music.durationFieldName,
-          value: this.formatTrackDuration(currentTrack.durationMS),
+          value: this.formatTrackDuration(queue.currentTrack.durationMS),
           inline: true,
         },
         {
@@ -401,16 +392,16 @@ export default class MusicExtension extends BaseExtension {
         },
         {
           name: phrases.music.pauseFieldName,
-          value: queue.connection?.paused
+          value: queue.node.isPaused()
             ? phrases.music.pauseEnabled
             : phrases.music.pauseDisabled,
           inline: true,
         }
       )
-      .setThumbnail(currentTrack.thumbnail)
+      .setThumbnail(queue.currentTrack.thumbnail)
       .setAuthor({
-        name: currentTrack.requestedBy.tag,
-        iconURL: currentTrack.requestedBy.displayAvatarURL(),
+        name: queue.currentTrack.requestedBy!.tag,
+        iconURL: queue.currentTrack.requestedBy!.displayAvatarURL(),
       });
 
     return [embed];
@@ -421,8 +412,8 @@ export default class MusicExtension extends BaseExtension {
     return duration.format(phrases.music.trackDurationFormat);
   }
 
-  createPlayerComponents(queue: Queue) {
-    const disabled = !queue.playing;
+  createPlayerComponents(queue: GuildQueue) {
+    const disabled = !queue.isPlaying || queue.deleted;
 
     const firstRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
@@ -464,16 +455,19 @@ export default class MusicExtension extends BaseExtension {
       secondRow,
     ];
 
-    if (queue.tracks.length > 0) {
+    if (queue.tracks.size > 0) {
       rows.push(
-        this.createTrackSelectMenu(trackSelectMenuCustomId, queue.tracks)
+        this.createTrackSelectMenu(
+          trackSelectMenuCustomId,
+          Object.values(queue.tracks)
+        )
       );
     }
 
     return rows;
   }
 
-  sumTrackDurations(tracks: Track[]) {
+  sumTrackDurations(tracks: Iterable<Track>) {
     let durationMs = 0;
 
     for (const track of tracks) {
@@ -503,7 +497,7 @@ export default class MusicExtension extends BaseExtension {
             .map((track) => ({
               label: track.title,
               value: track.id,
-              description: phrases.music.requestedByFmt(track.requestedBy),
+              description: phrases.music.requestedByFmt(track.requestedBy!),
             }))
         )
     );

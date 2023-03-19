@@ -16,12 +16,14 @@
     "cli": "npx ts-node cli.ts"
   },
   "dependencies": {
-    "@discordjs/opus": "^0.8.0",
+    "@discord-player/extractor": "^4.1.2",
+    "@discordjs/opus": "^0.9.0",
     "@prisma/client": "^4.6.0",
     "@trixis/lib-ts-bot": "0.2.23",
     "dayjs": "^1.11.6",
-    "discord-player": "5.3.2",
-    "discord.js": "14.6.0",
+    "discord-player": "^6.1.1",
+    "discord.js": "14.x",
+    "play-dl": "^1.9.6",
     "prisma": "^4.6.0",
     "reflect-metadata": "^0.1.13",
     "soundcloud-scraper": "^5.0.3",
