@@ -17,7 +17,6 @@ import {
   QueueRepeatMode,
   SearchResult,
   Track,
-  useQueue,
 } from "discord-player";
 import {
   ActionRowBuilder,
@@ -28,6 +27,7 @@ import {
   CommandInteraction,
   EmbedBuilder,
   GuildMember,
+  GuildResolvable,
   MessageComponentInteraction,
   ModalActionRowComponentBuilder,
   ModalBuilder,
@@ -93,13 +93,20 @@ export default class MusicExtension extends BaseExtension {
     });
   }
 
+  getQueue(nodeResolvable: GuildResolvable) {
+    return (
+      this.player.queues.get(nodeResolvable) ??
+      this.player.queues.create(nodeResolvable)
+    );
+  }
+
   @checkCustomId(playButtonCustomId)
   @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async playButtonHandler(interaction: ButtonInteraction) {
-    const queue = useQueue(interaction.guild!)!;
+    const queue = this.getQueue(interaction.guild!);
 
-    if (queue.node.isPlaying()) {
+    if (queue.currentTrack) {
       queue.node.setPaused(!queue.node.isPaused());
 
       await interaction.update({
@@ -118,7 +125,7 @@ export default class MusicExtension extends BaseExtension {
   async addTrackModalHandler(interaction: ModalSubmitInteraction) {
     await interaction.deferUpdate();
 
-    const queue = useQueue(interaction.guild!)!;
+    const queue = this.getQueue(interaction.guild!);
     const member = interaction.member as GuildMember;
 
     const trackQuery = interaction.fields.getTextInputValue(
@@ -126,11 +133,12 @@ export default class MusicExtension extends BaseExtension {
     );
 
     const searchResult = await this.player.search(trackQuery, {
-      requestedBy: interaction.user,
       searchEngine: QueryType.AUTO,
+      requestedBy: interaction.user,
     });
 
     const tracks = this.extractTracksFromSearchResult(searchResult);
+    tracks.forEach((track) => (track.requestedBy = interaction.user));
 
     if (tracks.length === 0) {
       return await interaction.editReply({
@@ -167,7 +175,7 @@ export default class MusicExtension extends BaseExtension {
   @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async stopButtonHandler(interaction: ButtonInteraction) {
-    const queue = useQueue(interaction.guild!)!;
+    const queue = this.getQueue(interaction.guild!);
     queue.delete();
 
     await interaction.update({
@@ -201,7 +209,7 @@ export default class MusicExtension extends BaseExtension {
   async loopSelectHandler(interaction: SelectMenuInteraction) {
     const loopType = parseInt(interaction.values[0]);
     const loopTypeName = phrases.music.loopTypes[interaction.values[0]];
-    const queue = useQueue(interaction.guild!)!;
+    const queue = this.getQueue(interaction.guild!);
 
     queue.setRepeatMode(loopType);
 
@@ -216,7 +224,7 @@ export default class MusicExtension extends BaseExtension {
   @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async shuffleHandler(interaction: ButtonInteraction) {
-    const queue = useQueue(interaction.guild!)!;
+    const queue = this.getQueue(interaction.guild!);
     queue.tracks.shuffle();
 
     await interaction.update({
@@ -262,7 +270,7 @@ export default class MusicExtension extends BaseExtension {
   @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async removeTrackHandler(interaction: ButtonInteraction) {
-    const queue = useQueue(interaction.guild!)!;
+    const queue = this.getQueue(interaction.guild!);
 
     if (queue.tracks.size === 0) {
       return await interaction.reply({
@@ -287,7 +295,7 @@ export default class MusicExtension extends BaseExtension {
   @selectMenuInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async removeTrackSelectHandler(interaction: SelectMenuInteraction) {
-    const queue = useQueue(interaction.guild!)!;
+    const queue = this.getQueue(interaction.guild!);
     const removedTrack = queue.removeTrack(interaction.values[0])!;
 
     await interaction.update({
@@ -302,7 +310,7 @@ export default class MusicExtension extends BaseExtension {
   @selectMenuInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async trackSelectHandler(interaction: SelectMenuInteraction) {
-    const queue = useQueue(interaction.guild!)!;
+    const queue = this.getQueue(interaction.guild!);
 
     const track = queue.tracks.find(
       (track) => track.id === interaction.values[0]
@@ -459,7 +467,7 @@ export default class MusicExtension extends BaseExtension {
       rows.push(
         this.createTrackSelectMenu(
           trackSelectMenuCustomId,
-          Object.values(queue.tracks)
+          queue.tracks.toArray()
         )
       );
     }

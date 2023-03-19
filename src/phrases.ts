@@ -25,7 +25,7 @@ export default {
       [QueueRepeatMode.QUEUE.toString()]: "Плейлист",
       [QueueRepeatMode.TRACK.toString()]: "Трек",
     },
-    trackDurationFormat: "HHч mmм ssс",
+    trackDurationFormat: "HH:mm:ss",
     trackInputLabel: "Трек",
     addTrackModalTitle: "Добавить трек",
     shouldBeInVoiceChannel: "Вы должны находиться в голосовом канале",

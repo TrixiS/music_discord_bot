@@ -3,7 +3,6 @@ import {
   CommandContext,
   commandHandler,
 } from "@trixis/lib-ts-bot";
-import { useQueue } from "discord-player";
 import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import MusicExtension from ".";
 import phrases from "../../phrases";
@@ -20,10 +19,7 @@ export default class MusicCommand extends BaseSlashCommand<MusicExtension> {
 
   @commandHandler({ autoDeferOptions: null })
   async run({ interaction, guild }: CommandContext) {
-    const queue =
-      useQueue(guild!) ?? this.extension.player.queues.create(guild!);
-
-    console.log("QUEUE", queue, this.extension.player.queues);
+    const queue = this.extension.getQueue(guild!);
 
     this.extension.playerInteractions
       .get(guild!.id)
