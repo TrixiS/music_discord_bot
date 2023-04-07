@@ -1,12 +1,9 @@
 import {
   BaseExtension,
-  buttonInteractionHandler,
   checkCustomId,
   CustomId,
   DefaultMap,
   eventHandler,
-  modalSubmitInteractionHandler,
-  selectMenuInteractionHandler,
 } from "@trixis/lib-ts-bot";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
@@ -29,14 +26,14 @@ import {
   GuildMember,
   GuildResolvable,
   MessageComponentInteraction,
+  MessageEditOptions,
   ModalActionRowComponentBuilder,
   ModalBuilder,
   ModalSubmitInteraction,
-  SelectMenuBuilder,
-  SelectMenuInteraction,
+  StringSelectMenuBuilder,
+  StringSelectMenuInteraction,
   TextInputBuilder,
   TextInputStyle,
-  WebhookEditMessageOptions,
 } from "discord.js";
 import {
   addTrackButtonCustomId,
@@ -100,8 +97,39 @@ export default class MusicExtension extends BaseExtension {
     );
   }
 
+  async updateQueuePlayerInteractions(
+    currentInteraction: PlayerInteraction | undefined,
+    queue: GuildQueue
+  ) {
+    const interactions = this.playerInteractions.get(queue.guild.id);
+
+    if (currentInteraction && !interactions.has(currentInteraction.id)) {
+      interactions.set(currentInteraction.id, currentInteraction);
+    }
+
+    if (interactions.size === 0) {
+      return;
+    }
+
+    const options: MessageEditOptions = {
+      embeds: this.createPlayerEmbeds(queue),
+      components: this.createPlayerComponents(queue),
+    };
+
+    const updatePlayerInteraction = async (interaction: PlayerInteraction) => {
+      try {
+        await interaction.editReply(options);
+      } catch {
+        interactions.delete(interaction.id);
+      }
+    };
+
+    await Promise.all(
+      interactions.map((interaction) => updatePlayerInteraction(interaction))
+    );
+  }
+
   @checkCustomId(playButtonCustomId)
-  @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async playButtonHandler(interaction: ButtonInteraction) {
     const queue = this.getQueue(interaction.guild!);
@@ -120,7 +148,6 @@ export default class MusicExtension extends BaseExtension {
   }
 
   @checkCustomId(addTrackModalCustomId)
-  @modalSubmitInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async addTrackModalHandler(interaction: ModalSubmitInteraction) {
     await interaction.deferUpdate();
@@ -172,7 +199,6 @@ export default class MusicExtension extends BaseExtension {
   }
 
   @checkCustomId(stopButtonCustomId)
-  @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async stopButtonHandler(interaction: ButtonInteraction) {
     const queue = this.getQueue(interaction.guild!);
@@ -187,14 +213,12 @@ export default class MusicExtension extends BaseExtension {
   }
 
   @checkCustomId(addTrackButtonCustomId)
-  @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async addTrackHandler(interaction: ButtonInteraction) {
     await interaction.showModal(this.createAddTrackModal());
   }
 
   @checkCustomId(loopButtonCustomId)
-  @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async loopHandler(interaction: ButtonInteraction) {
     await interaction.reply({
@@ -204,9 +228,8 @@ export default class MusicExtension extends BaseExtension {
   }
 
   @checkCustomId(loopSelectMenuCustomId)
-  @selectMenuInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
-  async loopSelectHandler(interaction: SelectMenuInteraction) {
+  async loopSelectHandler(interaction: StringSelectMenuInteraction) {
     const loopType = parseInt(interaction.values[0]);
     const loopTypeName = phrases.music.loopTypes[interaction.values[0]];
     const queue = this.getQueue(interaction.guild!);
@@ -221,7 +244,6 @@ export default class MusicExtension extends BaseExtension {
   }
 
   @checkCustomId(shuffleButtonCustomId)
-  @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async shuffleHandler(interaction: ButtonInteraction) {
     const queue = this.getQueue(interaction.guild!);
@@ -234,40 +256,7 @@ export default class MusicExtension extends BaseExtension {
     await this.updateQueuePlayerInteractions(interaction, queue);
   }
 
-  async updateQueuePlayerInteractions(
-    currentInteraction: PlayerInteraction | undefined,
-    queue: GuildQueue
-  ) {
-    const interactions = this.playerInteractions.get(queue.guild.id);
-
-    if (currentInteraction && !interactions.has(currentInteraction.id)) {
-      interactions.set(currentInteraction.id, currentInteraction);
-    }
-
-    if (interactions.size === 0) {
-      return;
-    }
-
-    const options: WebhookEditMessageOptions = {
-      embeds: this.createPlayerEmbeds(queue),
-      components: this.createPlayerComponents(queue),
-    };
-
-    const updatePlayerInteraction = async (interaction: PlayerInteraction) => {
-      try {
-        await interaction.editReply(options);
-      } catch {
-        interactions.delete(interaction.id);
-      }
-    };
-
-    await Promise.all(
-      interactions.map((interaction) => updatePlayerInteraction(interaction))
-    );
-  }
-
   @checkCustomId(removeTrackButtonCustomId)
-  @buttonInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
   async removeTrackHandler(interaction: ButtonInteraction) {
     const queue = this.getQueue(interaction.guild!);
@@ -292,9 +281,8 @@ export default class MusicExtension extends BaseExtension {
   }
 
   @checkCustomId(removeTrackSelectMenuCustomId)
-  @selectMenuInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
-  async removeTrackSelectHandler(interaction: SelectMenuInteraction) {
+  async removeTrackSelectHandler(interaction: StringSelectMenuInteraction) {
     const queue = this.getQueue(interaction.guild!);
     const removedTrack = queue.removeTrack(interaction.values[0])!;
 
@@ -307,9 +295,8 @@ export default class MusicExtension extends BaseExtension {
   }
 
   @checkCustomId(trackSelectMenuCustomId)
-  @selectMenuInteractionHandler()
   @eventHandler({ event: "interactionCreate" })
-  async trackSelectHandler(interaction: SelectMenuInteraction) {
+  async trackSelectHandler(interaction: StringSelectMenuInteraction) {
     const queue = this.getQueue(interaction.guild!);
 
     const track = queue.tracks.find(
@@ -329,8 +316,8 @@ export default class MusicExtension extends BaseExtension {
   }
 
   createLoopSelectComponents() {
-    const row = new ActionRowBuilder<SelectMenuBuilder>().addComponents(
-      new SelectMenuBuilder()
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder()
         .setCustomId(loopSelectMenuCustomId.prefix)
         .setMinValues(1)
         .setMaxValues(1)
@@ -458,7 +445,7 @@ export default class MusicExtension extends BaseExtension {
         .setDisabled(disabled)
     );
 
-    const rows: ActionRowBuilder<ButtonBuilder | SelectMenuBuilder>[] = [
+    const rows: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] = [
       firstRow,
       secondRow,
     ];
@@ -488,8 +475,8 @@ export default class MusicExtension extends BaseExtension {
   createTrackSelectMenu(customId: CustomId, tracks: Track[]) {
     const sumTrackDuration = this.sumTrackDurations(tracks);
 
-    return new ActionRowBuilder<SelectMenuBuilder>().addComponents(
-      new SelectMenuBuilder()
+    return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder()
         .setCustomId(customId.prefix)
         .setMinValues(1)
         .setMaxValues(1)
