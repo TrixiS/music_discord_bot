@@ -31,7 +31,7 @@ export default {
     shouldBeInVoiceChannel: "Вы должны находиться в голосовом канале",
     couldNotConnectToVoiceChannel: "Не удалось подключиться к голосому каналу",
     tracksNotFound: "Не удалось найти треки по вашему запросу",
-    requestedByFmt: (user: User) => `От ${user.tag}`,
+    requestedByFmt: (user: User) => `От ${user.displayName}`,
     pauseFieldName: "Пауза",
     pauseEnabled: "Включена",
     pauseDisabled: "Выключена",
